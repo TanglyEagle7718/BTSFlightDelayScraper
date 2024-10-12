@@ -49,7 +49,7 @@ driver = webdriver.Chrome(options=chrome_options)    # or webdriver.Firefox()
 driver.set_page_load_timeout(15*60)
 
 # Open the webpage
-driver.get('https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr')
+driver.get('https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=')
 
 # List of features to be pulled from db
 feature_list = ["YEAR", "QUARTER", "MONTH", "DAY_OF_MONTH", "DAY_OF_WEEK", 
@@ -122,11 +122,11 @@ def download_data(year: int, month: int):
 
 
 # Loop through the months
-for year in range(start_year, 2025):
+for year in range(2024, start_year-1, -1):
     for month in range(1,13):
         if year == start_year and month < start_month: # hardcoded for starting at 6/2003 (last available date for delays)
             continue
-        driver.download_data(year, month)
+        download_data(year, month)
 
         
 # Close the browser
