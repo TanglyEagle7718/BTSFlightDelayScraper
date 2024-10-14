@@ -25,7 +25,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
 # Global parameters for tunings
-start_month = 7
+start_month = 12
 start_year = 2003
 
 end_year = 2025 # Should be your end year + 1
@@ -223,7 +223,7 @@ for year in range(start_year, 2025):
         if not year_reached:
             continue
         else:
-            if month < beginning_month:
+            if not month_reached and month < beginning_month:
                 continue
             month_reached = True
 
