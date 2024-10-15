@@ -20,7 +20,8 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, UnexpectedAlertPresentException, NoAlertPresentException
+
 
 
 
@@ -34,15 +35,28 @@ beginning_year = 2003
 beginning_month = 1
 
 
-year_reached: bool = False
-month_reached: bool = False
-
-
 debug_mode = True # To test for any crashes
+
+us_states = [
+                "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+                "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+                "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+                "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", 
+                "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", 
+                "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", 
+                "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+                "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", 
+                "Washington", "West Virginia", "Wisconsin", "Wyoming", "U.S. Pacific Trust Territories and Possessions", "U.S. Virgin Islands"
+            ]
+
+start_year = int(input("Start year: "))
+end_year = int(input("End year: "))
+start_month: int = int(input("Start month  (as an integer): "))
+start_state: int = us_states.index(input("Start state: "))
 
 
 # Set up download file names
-download_dir = "/home/practiceubuntu/Documents/BTSFlightDelayScraper/data_files"
+download_dir = input("what directory are we saving to? ")
 chrome_options = Options()
 
 if not debug_mode:
@@ -75,17 +89,7 @@ feature_list = ["YEAR", "QUARTER", "MONTH", "DAY_OF_MONTH", "DAY_OF_WEEK",
                 "CANCELLED", "CANCELLATION_CODE", "DIVERTED", "CARRIER_DELAY", "WEATHER_DELAY", 
                 "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY"]
 
-us_states = [
-                "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
-                "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
-                "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
-                "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", 
-                "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", 
-                "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", 
-                "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
-                "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", 
-                "Washington", "West Virginia", "Wisconsin", "Wyoming", "U.S. Pacific Trust Territories and Possessions", "U.S. Virgin Islands"
-            ]
+
 beginning_state = 0
 
 
@@ -147,12 +151,16 @@ class MyHandler(FileSystemEventHandler):
             time.sleep(2)
 
             original_file_name = os.path.join(download_dir, newest_file_name)
-            new_file_name = os.path.join(download_dir, f"{self.month}_{self.year}_{us_states[self.state]}_data.zip")
+            try: 
+                new_file_name = os.path.join(download_dir, f"{self.month}_{self.year}_{us_states[self.state]}_data.zip")
+            
 
-            # Check if the original file exists before renaming
-            if os.path.exists(original_file_name):
-                os.rename(original_file_name, new_file_name)
-            print("A file has been renamed from", original_file_name, "to", new_file_name)
+                # Check if the original file exists before renaming
+                if os.path.exists(original_file_name):
+                    os.rename(original_file_name, new_file_name)
+                print("A file has been renamed from", original_file_name, "to", new_file_name)
+            except FileNotFoundError:
+                pass
             self.event.set() # tell parent that we are done
 
 # Function to start monitoring
@@ -178,29 +186,34 @@ def download_data(month: int, year: int, state: int):
 
 
     # Click the download button
-    download_button = driver.find_element(By.ID, 'btnDownload')  # Use the actual ID
-    print("downloading", month, ",", year, "at", us_states[state])
-    download_button.click()
-
     try:
-        lbl_note = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, 'lblNote'))
-        )
-        
-        # Check the text of lblNote for error indication
-        if lbl_note.text:
-            #print("Download error detected:", lbl_note.text)
-            file_detected_event.set()
-            observer.stop()
-            observer.join()
-            driver.get('https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr')
-            print("Unable to download info for", us_states[state])
-            return
-        else:
-            pass
-    except TimeoutException:
-        print("The lblNote element did not appear; assuming download was successful.")
-    
+        download_button = driver.find_element(By.ID, 'btnDownload')  # Use the actual ID
+        print("downloading", month, ",", year, "at", us_states[state])
+        download_button.click()
+
+        try:
+            lbl_note = WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.ID, 'lblNote'))
+            )
+            
+            # Check the text of lblNote for error indication
+            if lbl_note.text:
+                #print("Download error detected:", lbl_note.text)
+                file_detected_event.set()
+                observer.stop()
+                observer.join()
+                driver.get('https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ&QO_fu146_anzr=b0-gvzr')
+                print("Unable to download info for", us_states[state])
+                return
+            else:
+                pass
+        except TimeoutException:
+            print("The lblNote element did not appear; assuming download was successful.")
+    except UnexpectedAlertPresentException:
+        download_data(month, year, state)
+    except NoAlertPresentException:
+        download_data(month, year, state)
+
     # Wait for the download to complete
     file_detected_event.wait()
     observer.stop()
@@ -210,8 +223,12 @@ def download_data(month: int, year: int, state: int):
 
 
 
+year_reached: bool = False
+month_reached: bool = False
+state_reached: bool = False
+
 # Loop through the months
-for year in range(start_year, 2025):
+for year in range(start_year, end_year):
 
     if year < beginning_year:
         continue
@@ -223,20 +240,27 @@ for year in range(start_year, 2025):
         if not year_reached:
             continue
         else:
-            if not month_reached and month < beginning_month:
+            if not month_reached and month < start_month:
                 continue
             month_reached = True
+
+        start_time = 0
+        if state_reached:
+            start_time = time.time()
 
         for state in range(len(us_states)):
             if year == start_year and month < start_month: # hardcoded for starting at 6/2003 (last available date for delays)
                 continue
+            
             if not month_reached:
                 continue
             else:
-                if state < beginning_state:
+                if not state_reached and state < start_state:
                     continue
-
+                state_reached = True
+                
             download_data(month, year, state)
+        print("--- %s seconds ---" % (time.time() - start_time))
 
 # Close the browser
 driver.quit()
