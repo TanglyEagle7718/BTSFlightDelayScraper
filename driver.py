@@ -52,6 +52,18 @@ class Driver:
                         "CANCELLED", "CANCELLATION_CODE", "DIVERTED", "CARRIER_DELAY", "WEATHER_DELAY", 
                         "NAS_DELAY", "SECURITY_DELAY", "LATE_AIRCRAFT_DELAY"]
 
+        self.us_states = [
+                        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+                        "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+                        "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+                        "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", 
+                        "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", 
+                        "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", 
+                        "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+                        "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", 
+                        "Washington", "West Virginia", "Wisconsin", "Wyoming", "U.S. Pacific Trust Territories and Possessions", "U.S. Virgin Islands"
+                    ]
+
 
 
     def select_month(self, id: int) -> None:
@@ -83,6 +95,14 @@ class Driver:
             checkbox = self.driver.find_element(By.ID, feature)
             if not checkbox.is_selected():
                 checkbox.click()
+    
+    def select_state(self, state: int) -> None:
+        """Select 1 of 50 states (ignores territories)"""
+        if state >= len(self.us_states) or state < 0:
+            return
+        select_element = Select(self.driver.find_element(By.ID, "cboGeography"))
+        select_element.select_by_value(self.us_states[state])
+
         
     # Setting up observer for directory
     # File event handler
@@ -127,6 +147,7 @@ class Driver:
         self.select_year(self.year)
         self.select_month(self.month)
         self.select_features()
+        self.select_state(self.state)
 
 
         # Click the download button
